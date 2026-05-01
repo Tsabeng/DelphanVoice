@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DelphanVoice — Texte en Audio</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=JetBrains+Mono:wght@300;400;500&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0a0a0a;
+    --paper: #f5f0e8;
+    --cream: #ede8d8;
+    --amber: #c8893a;
+    --amber-dark: #9a6420;
+    --amber-light: #f0c070;
+    --rust: #b84c2a;
+    --sage: #5a7a5a;
+    --text: #1a1410;
+    --text-dim: #6b5a48;
+    --border: #c8b89a;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Lato', sans-serif;
+    background: var(--paper);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grain texture overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 100;
+    opacity: 0.6;
+  }
+
+  /* Decorative lines */
+  body::after {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+    background: repeating-linear-gradient(90deg, var(--amber) 0px, var(--amber) 60px, var(--rust) 60px, var(--rust) 62px, var(--amber) 62px, var(--amber) 122px, transparent 122px, transparent 124px);
+    z-index: 99;
+  }
+
+  .page {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 60px 24px 80px;
+    position: relative;
+  }
+
+  /* Header */
+  header {
+    text-align: center;
+    margin-bottom: 56px;
+    position: relative;
+  }
+
+  .header-rule {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .header-rule::before,
+  .header-rule::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border), transparent);
+  }
+
+  .header-ornament {
+    font-size: 20px;
+    color: var(--amber);
+    letter-spacing: 8px;
+  }
+
+  .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 5px;
+    text-transform: uppercase;
+    color: var(--amber-dark);
+    margin-bottom: 10px;
+  }
+
+  h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(40px, 7vw, 68px);
+    font-weight: 700;
+    line-height: 1.05;
+    color: var(--ink);
+    margin-bottom: 12px;
+    letter-spacing: -1px;
+  }
+
+  h1 em {
+    font-style: italic;
+    color: var(--amber);
+  }
+
+  .tagline {
+    font-size: 15px;
+    color: var(--text-dim);
+    font-weight: 300;
+    letter-spacing: 0.3px;
+  }
+
+  /* Main card */
+  .card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 40px;
+    box-shadow:
+      4px 4px 0 var(--cream),
+      5px 5px 0 var(--border),
+      12px 12px 32px rgba(0,0,0,0.08);
+    position: relative;
+    margin-bottom: 24px;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: -1px; left: 20px; right: 20px;
+    height: 3px;
+    background: linear-gradient(90deg, var(--amber), var(--amber-light), var(--amber));
+    border-radius: 0 0 2px 2px;
+  }
+
+  /* Language selector */
+  .controls-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    align-items: center;
+  }
+
+  .label-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+    display: block;
+  }
+
+  .lang-select {
+    flex: 0 0 auto;
+  }
+
+  .lang-select select {
+    background: var(--cream);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 8px 32px 8px 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--text);
+    outline: none;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23c8893a'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    transition: border-color 0.2s;
+  }
+
+  .lang-select select:focus { border-color: var(--amber); }
+
+  /* Textarea */
+  .textarea-wrap {
+    position: relative;
+    margin-bottom: 24px;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 180px;
+    background: var(--paper);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 16px 18px;
+    font-family: 'Lato', sans-serif;
+    font-size: 16px;
+    line-height: 1.7;
+    color: var(--text);
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    /* lined paper effect */
+    background-image: repeating-linear-gradient(
+      transparent,
+      transparent 27px,
+      rgba(200,184,154,0.25) 27px,
+      rgba(200,184,154,0.25) 28px
+    );
+    background-position: 0 8px;
+  }
+
+  textarea:focus {
+    border-color: var(--amber);
+    box-shadow: 0 0 0 3px rgba(200,137,58,0.12);
+  }
+
+  textarea::placeholder {
+    color: var(--border);
+    font-style: italic;
+  }
+
+  .char-count {
+    position: absolute;
+    bottom: 8px;
+    right: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--border);
+  }
+
+  /* Generate button */
+  .btn-generate {
+    width: 100%;
+    padding: 16px 32px;
+    background: var(--ink);
+    color: var(--paper);
+    border: none;
+    border-radius: 2px;
+    font-family: 'Playfair Display', serif;
+    font-size: 18px;
+    font-style: italic;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.25s;
+    letter-spacing: 0.5px;
+    box-shadow: 3px 3px 0 var(--amber);
+  }
+
+  .btn-generate:hover {
+    background: var(--amber-dark);
+    box-shadow: 5px 5px 0 var(--amber-light);
+    transform: translate(-1px, -1px);
+  }
+
+  .btn-generate:active {
+    transform: translate(2px, 2px);
+    box-shadow: 1px 1px 0 var(--amber);
+  }
+
+  .btn-generate:disabled {
+    background: var(--border);
+    box-shadow: 2px 2px 0 var(--cream);
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .btn-generate .btn-inner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  /* Wave icon */
+  .wave-icon {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    height: 20px;
+  }
+
+  .wave-icon span {
+    display: block;
+    width: 3px;
+    border-radius: 2px;
+    background: currentColor;
+    transition: height 0.15s;
+  }
+
+  .wave-icon span:nth-child(1) { height: 6px; }
+  .wave-icon span:nth-child(2) { height: 14px; }
+  .wave-icon span:nth-child(3) { height: 10px; }
+  .wave-icon span:nth-child(4) { height: 18px; }
+  .wave-icon span:nth-child(5) { height: 8px; }
+  .wave-icon span:nth-child(6) { height: 12px; }
+  .wave-icon span:nth-child(7) { height: 6px; }
+
+  .btn-generate:not(:disabled):hover .wave-icon span:nth-child(1) { height: 14px; }
+  .btn-generate:not(:disabled):hover .wave-icon span:nth-child(2) { height: 8px; }
+  .btn-generate:not(:disabled):hover .wave-icon span:nth-child(3) { height: 18px; }
+  .btn-generate:not(:disabled):hover .wave-icon span:nth-child(4) { height: 6px; }
+  .btn-generate:not(:disabled):hover .wave-icon span:nth-child(5) { height: 14px; }
+  .btn-generate:not(:disabled):hover .wave-icon span:nth-child(6) { height: 9px; }
+  .btn-generate:not(:disabled):hover .wave-icon span:nth-child(7) { height: 16px; }
+
+  /* Loading state */
+  .spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(245,240,232,0.3);
+    border-top-color: var(--paper);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Result section */
+  .result-section {
+    display: none;
+    animation: slideUp 0.4s cubic-bezier(0.16,1,0.3,1);
+  }
+
+  .result-section.visible { display: block; }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .result-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 28px 32px;
+    box-shadow: 4px 4px 0 var(--cream), 5px 5px 0 var(--border);
+    position: relative;
+  }
+
+  .result-card::before {
+    content: '';
+    position: absolute;
+    top: -1px; left: 20px; right: 20px;
+    height: 3px;
+    background: linear-gradient(90deg, var(--sage), #8fba8f, var(--sage));
+  }
+
+  .result-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--sage);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .result-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(90,122,90,0.3);
+  }
+
+  /* Audio player custom */
+  .audio-wrap {
+    margin-bottom: 16px;
+  }
+
+  audio {
+    width: 100%;
+    height: 40px;
+    border-radius: 2px;
+    outline: none;
+  }
+
+  /* Custom audio player */
+  .player {
+    background: var(--paper);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .play-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--ink);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.2s;
+    color: var(--paper);
+  }
+
+  .play-btn:hover { background: var(--amber); transform: scale(1.08); }
+
+  .play-btn svg { width: 16px; height: 16px; fill: currentColor; }
+
+  .player-right { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+
+  .progress-track {
+    width: 100%;
+    height: 4px;
+    background: var(--cream);
+    border-radius: 2px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--amber-dark), var(--amber));
+    border-radius: 2px;
+    width: 0%;
+    transition: width 0.1s;
+  }
+
+  .time-row {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  /* Live waveform bars during playback */
+  .playback-wave {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    height: 20px;
+  }
+
+  .playback-wave span {
+    display: block;
+    width: 3px;
+    border-radius: 2px;
+    background: var(--amber);
+    height: 4px;
+    transition: height 0.1s;
+  }
+
+  .playback-wave.playing span { animation: wavePulse 0.8s ease-in-out infinite; }
+
+  .playback-wave span:nth-child(1) { animation-delay: 0s; }
+  .playback-wave span:nth-child(2) { animation-delay: 0.1s; }
+  .playback-wave span:nth-child(3) { animation-delay: 0.2s; }
+  .playback-wave span:nth-child(4) { animation-delay: 0.05s; }
+  .playback-wave span:nth-child(5) { animation-delay: 0.15s; }
+
+  @keyframes wavePulse {
+    0%, 100% { height: 4px; }
+    50% { height: 16px; }
+  }
+
+  /* Download btn */
+  .btn-download {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 20px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s;
+    margin-top: 12px;
+  }
+
+  .btn-download:hover {
+    border-color: var(--amber);
+    color: var(--amber-dark);
+    background: rgba(200,137,58,0.05);
+  }
+
+  /* Error */
+  .error-box {
+    display: none;
+    background: rgba(184,76,42,0.06);
+    border: 1px solid rgba(184,76,42,0.3);
+    border-left: 3px solid var(--rust);
+    padding: 12px 16px;
+    font-size: 13px;
+    color: var(--rust);
+    margin-top: 16px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .error-box.visible { display: block; }
+
+  /* Footer */
+  footer {
+    text-align: center;
+    margin-top: 48px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+  }
+
+  .footer-ornament {
+    font-size: 18px;
+    color: var(--amber);
+    letter-spacing: 10px;
+    margin-bottom: 8px;
+  }
+
+  footer p {
+    font-size: 12px;
+    color: var(--border);
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 1px;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div class="header-rule"><span class="header-ornament">✦ ✦ ✦</span></div>
+    <div class="eyebrow">Conversion Texte → Audio</div>
+    <h1>Delphan<em>Voice</em></h1>
+    <p class="tagline">Transformez vos mots en voix en un instant</p>
+  </header>
+
+  <div class="card">
+    <!-- Controls row -->
+    <div class="controls-row">
+      <div class="lang-select">
+        <span class="label-tag">Langue</span>
+        <select id="langSelect">
+          <option value="fr">🇫🇷 Français</option>
+          <option value="en">🇬🇧 English</option>
+          <option value="es">🇪🇸 Español</option>
+          <option value="de">🇩🇪 Deutsch</option>
+          <option value="it">🇮🇹 Italiano</option>
+          <option value="pt">🇵🇹 Português</option>
+          <option value="ar">🇸🇦 العربية</option>
+          <option value="zh-TW">🇨🇳 中文</option>
+          <option value="ja">🇯🇵 日本語</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Textarea -->
+    <div class="textarea-wrap">
+      <span class="label-tag">Votre texte</span>
+      <textarea
+        id="textInput"
+        placeholder="Saisissez votre texte ici…"
+        maxlength="5000"
+        oninput="updateCharCount()"
+      ></textarea>
+      <span class="char-count" id="charCount">0 / 5000</span>
+    </div>
+
+    <!-- Button -->
+    <button class="btn-generate" id="generateBtn" onclick="generateAudio()">
+      <span class="btn-inner" id="btnContent">
+        <span class="wave-icon">
+          <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+        </span>
+        Générer l'audio
+      </span>
+    </button>
+
+    <div class="error-box" id="errorBox"></div>
+  </div>
+
+  <!-- Result -->
+  <div class="result-section" id="resultSection">
+    <div class="result-card">
+      <div class="result-label">✓ Audio généré</div>
+
+      <!-- Custom player -->
+      <div class="player">
+        <button class="play-btn" id="playBtn" onclick="togglePlay()">
+          <svg id="playIcon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+        <div class="player-right">
+          <div class="progress-track" id="progressTrack" onclick="seek(event)">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+          <div class="time-row">
+            <span id="currentTime">0:00</span>
+            <div class="playback-wave" id="playbackWave">
+              <span></span><span></span><span></span><span></span><span></span>
+            </div>
+            <span id="duration">0:00</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hidden native audio element -->
+      <audio id="audioPlayer" style="display:none"></audio>
+
+      <a class="btn-download" id="downloadBtn" download="audio.mp3">
+        ↓ Télécharger le fichier MP3
+      </a>
+    </div>
+  </div>
+
+  <footer>
+    <div class="footer-ornament">— ✦ —</div>
+    <p>Propulsé par gTTS · Google Text-to-Speech</p>
+  </footer>
+
+</div>
+
+<script>
+// ====== CHAR COUNT ======
+function updateCharCount() {
+  const v = document.getElementById('textInput').value.length;
+  document.getElementById('charCount').textContent = `${v} / 5000`;
+}
+
+// ====== TIME FORMAT ======
+function fmtTime(s) {
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  return `${m}:${sec.toString().padStart(2,'0')}`;
+}
+
+// ====== PLAYER ======
+const audio = document.getElementById('audioPlayer');
+const playIcon = document.getElementById('playIcon');
+const playbackWave = document.getElementById('playbackWave');
+
+audio.addEventListener('timeupdate', () => {
+  if(!audio.duration) return;
+  const pct = (audio.currentTime / audio.duration) * 100;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('currentTime').textContent = fmtTime(audio.currentTime);
+});
+
+audio.addEventListener('loadedmetadata', () => {
+  document.getElementById('duration').textContent = fmtTime(audio.duration);
+});
+
+audio.addEventListener('ended', () => {
+  playIcon.innerHTML = '<path d="M8 5v14l11-7z"/>';
+  playbackWave.classList.remove('playing');
+  document.getElementById('progressFill').style.width = '0%';
+  document.getElementById('currentTime').textContent = '0:00';
+  audio.currentTime = 0;
+});
+
+function togglePlay() {
+  if(audio.paused) {
+    audio.play();
+    playIcon.innerHTML = '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>';
+    playbackWave.classList.add('playing');
+  } else {
+    audio.pause();
+    playIcon.innerHTML = '<path d="M8 5v14l11-7z"/>';
+    playbackWave.classList.remove('playing');
+  }
+}
+
+function seek(e) {
+  const track = document.getElementById('progressTrack');
+  const rect = track.getBoundingClientRect();
+  const pct = (e.clientX - rect.left) / rect.width;
+  audio.currentTime = pct * audio.duration;
+}
+
+// ====== GENERATE ======
+async function generateAudio() {
+  const text = document.getElementById('textInput').value.trim();
+  const lang = document.getElementById('langSelect').value;
+  const btn = document.getElementById('generateBtn');
+  const errBox = document.getElementById('errorBox');
+  const resultSection = document.getElementById('resultSection');
+
+  // Reset
+  errBox.classList.remove('visible');
+  resultSection.classList.remove('visible');
+
+  if(!text) {
+    showError('Veuillez saisir du texte avant de générer l\'audio.');
+    return;
+  }
+
+  // Loading state
+  btn.disabled = true;
+  document.getElementById('btnContent').innerHTML = `<span class="spinner"></span> Génération en cours…`;
+
+  try {
+    const res = await fetch('/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, lang })
+    });
+
+    if(!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Erreur serveur');
+    }
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+
+    // Set audio
+    audio.src = url;
+    document.getElementById('downloadBtn').href = url;
+    document.getElementById('progressFill').style.width = '0%';
+    document.getElementById('currentTime').textContent = '0:00';
+    document.getElementById('duration').textContent = '0:00';
+    playIcon.innerHTML = '<path d="M8 5v14l11-7z"/>';
+    playbackWave.classList.remove('playing');
+
+    resultSection.classList.add('visible');
+    resultSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  } catch(e) {
+    showError('Erreur : ' + e.message);
+  } finally {
+    btn.disabled = false;
+    document.getElementById('btnContent').innerHTML = `
+      <span class="wave-icon">
+        <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+      </span>
+      Générer l'audio`;
+  }
+}
+
+function showError(msg) {
+  const box = document.getElementById('errorBox');
+  box.textContent = '✗ ' + msg;
+  box.classList.add('visible');
+}
+
+// Allow Enter+Shift for newline, Enter alone does nothing special
+document.getElementById('textInput').addEventListener('keydown', e => {
+  if(e.key === 'Enter' && !e.shiftKey && e.ctrlKey) generateAudio();
+});
+</script>
+</body>
+</html>
