@@ -32,5 +32,10 @@ def generate():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    print("🎙  DelphanVoice — http://localhost:5000")
-    app.run(debug=True, port=5000)
+    print("🎙 DelphanVoice en cours...")
+    app.run(
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", 5000)),
+        debug=False
+    )
+    
